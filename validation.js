@@ -1,57 +1,47 @@
-const sqlite3 = require('sqlite3').verbose(); // sqlite3 modul importálása
-const db = new sqlite3.Database(':memory:'); // Memóriában lévő adatbázis létrehozása
+const Joi = require('joi'); // Joi importálása validációhoz
 
-// Táblák létrehozása és kapcsolatok definiálása
-db.serialize(() => {
-    // employees tábla létrehozása
-    db.run(`CREATE TABLE IF NOT EXISTS employees (
-        idCardNum VARCHAR(15) PRIMARY KEY, // Elsődleges kulcs
-        lastName VARCHAR(50) NOT NULL, // Alkalmazott vezetékneve
-        middleName VARCHAR(50), // Alkalmazott középső neve
-        firstName VARCHAR(50) NOT NULL, // Alkalmazott keresztneve
-        email VARCHAR(255) NOT NULL, // Alkalmazott email címe
-        pass VARCHAR(255) NOT NULL, // Alkalmazott jelszava
-        job INT(11) NOT NULL, // Alkalmazott munkaköre
-        phoneNumber VARCHAR(25), // Alkalmazott telefonszáma
-        homeAddress INT(11) NOT NULL, // Alkalmazott lakcíme
-        taxNum VARCHAR(20), // Alkalmazott adószáma
-        socialSecNum VARCHAR(20), // Alkalmazott társadalombiztosítási száma
-        dateOfBirth DATE, // Alkalmazott születési dátuma
-        placeOfBirth VARCHAR(255), // Alkalmazott születési helye
-        bankAccountNumber VARCHAR(34), // Alkalmazott bankszámlaszáma
-        supervisorID VARCHAR(15), // Alkalmazott felettesének azonosítója
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, // Létrehozás időbélyege
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP // Utolsó frissítés időbélyege
-    )`);
-
-    // employmentcontracts tábla létrehozása
-    db.run(`CREATE TABLE IF NOT EXISTS employmentcontracts (
-        contractID INT(11) PRIMARY KEY AUTOINCREMENT, // Elsődleges kulcs automatikus növeléssel
-        employee VARCHAR(15) NOT NULL, // Alkalmazott azonosítója (külső kulcs)
-        startDate DATE NOT NULL, // Szerződés kezdete
-        endDate DATE, // Szerződés vége
-        hourlyRates INT(11) NOT NULL, // Órabér
-        working_hours INT(11) NOT NULL, // Munkaórák száma
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, // Létrehozás időbélyege
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, // Utolsó frissítés időbélyege
-        FOREIGN KEY (employee) REFERENCES employees(idCardNum) // Külső kulcs kapcsolat
-    )`);
-
-    // equipment tábla létrehozása
-    db.run(`CREATE TABLE IF NOT EXISTS equipment (
-        equipmentID INT(11) PRIMARY KEY AUTOINCREMENT, // Elsődleges kulcs automatikus növeléssel
-        equipmentName VARCHAR(255) NOT NULL, // Eszköz neve
-        serial_number VARCHAR(255) NOT NULL, // Sorozatszám
-        purchase_date DATE NOT NULL, // Vásárlás dátuma
-        status VARCHAR(255) NOT NULL, // Állapot
-        employee VARCHAR(15) NOT NULL, // Alkalmazott azonosítója (külső kulcs)
-        last_service_date DATE, // Utolsó szerviz dátuma
-        warranty_expiration DATE NOT NULL, // Garancia lejárata
-        remarks TEXT, // Megjegyzések
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, // Létrehozás időbélyege
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, // Utolsó frissítés időbélyege
-        FOREIGN KEY (employee) REFERENCES employees(idCardNum) // Külső kulcs kapcsolat
-    )`);
+// employees tábla validációs sémája
+const employeeSchema = Joi.object({
+    idCardNum: Joi.string().max(15).required(), // ID kártyaszám (max 15 karakter, kötelező)
+    lastName: Joi.string().max(50).required(), // Vezetéknév (max 50 karakter, kötelező)
+    middleName: Joi.string().max(50).allow(null, ''), // Középső név (max 50 karakter, opcionális)
+    firstName: Joi.string().max(50).required(), // Keresztnév (max 50 karakter, kötelező)
+    email: Joi.string().email().required(), // Email (érvényes email formátum, kötelező)
+    pass: Joi.string().required(), // Jelszó (kötelező)
+    job: Joi.number().integer().required(), // Munkakör azonosító (egész szám, kötelező)
+    phoneNumber: Joi.string().max(25).allow(null, ''), // Telefonszám (max 25 karakter, opcionális)
+    homeAddress: Joi.number().integer().required(), // Lakcím azonosító (egész szám, kötelező)
+    taxNum: Joi.string().max(20).allow(null, ''), // Adószám (max 20 karakter, opcionális)
+    socialSecNum: Joi.string().max(20).allow(null, ''), // Társadalombiztosítási szám (max 20 karakter, opcionális)
+    dateOfBirth: Joi.date().allow(null, ''), // Születési dátum (opcionális)
+    placeOfBirth: Joi.string().max(255).allow(null, ''), // Születési hely (max 255 karakter, opcionális)
+    bankAccountNumber: Joi.string().max(34).allow(null, ''), // Bankszámlaszám (max 34 karakter, opcionális)
+    supervisorID: Joi.string().max(15).allow(null, '') // Felettes azonosítója (max 15 karakter, opcionális)
 });
 
-module.exports = db; // Adatbázis kapcsolat exportálása
+// employmentcontracts tábla validációs sémája
+const employmentContractSchema = Joi.object({
+    employee: Joi.string().max(15).required(), // Alkalmazott azonosítója (max 15 karakter, kötelező)
+    startDate: Joi.date().required(), // Kezdési dátum (kötelező)
+    endDate: Joi.date().allow(null, ''), // Befejezési dátum (opcionális)
+    hourlyRates: Joi.number().integer().required(), // Órabér (egész szám, kötelező)
+    working_hours: Joi.number().integer().required() // Munkaórák száma (egész szám, kötelező)
+});
+
+// equipment tábla validációs sémája
+const equipmentSchema = Joi.object({
+    equipmentName: Joi.string().max(255).required(), // Eszköz neve (max 255 karakter, kötelező)
+    serial_number: Joi.string().max(255).required(), // Sorozatszám (max 255 karakter, kötelező)
+    purchase_date: Joi.date().required(), // Vásárlás dátuma (kötelező)
+    status: Joi.string().max(255).required(), // Állapot (max 255 karakter, kötelező)
+    employee: Joi.string().max(15).required(), // Alkalmazott azonosítója (max 15 karakter, kötelező)
+    last_service_date: Joi.date().allow(null, ''), // Utolsó szerviz dátuma (opcionális)
+    warranty_expiration: Joi.date().required(), // Garancia lejárata (kötelező)
+    remarks: Joi.string().allow(null, '') // Megjegyzések (opcionális)
+});
+
+module.exports = {
+    employeeSchema,
+    employmentContractSchema,
+    equipmentSchema
+};
