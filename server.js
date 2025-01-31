@@ -13,9 +13,9 @@ app.use(cors());
 app.use(express.json());
 
 //Adatbázis inicializálása
-const db = new sqlite3.Database('cars.db');
+const db = new sqlite3.Database('sync.db');
 db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS cars (
+    db.run(`CREATE TABLE IF NOT EXISTS sync (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         factory TEXT NOT NULL,
         model TEXT NOT NULL,
@@ -40,7 +40,7 @@ function inputValidations(car) {
 };
 
 //Új gépkocsi adatok felvitele
-app.post('/api/v1/cars', (req, res) => {
+app.post('/api/v1/sync', (req, res) => {
     const { factory, model, year, owner, license } = req.body;
 //A végponti adatok validálása
     const { error } = inputValidations(req.body);
@@ -48,7 +48,7 @@ app.post('/api/v1/cars', (req, res) => {
         return res.status(400).json({ message: error.details[0].message });
     }
 
-    db.run(`INSERT INTO cars (factory, model, year, owner, license) VALUES (?, ?, ?, ?, ?)`,
+    db.run(`INSERT INTO sync (factory, model, year, owner, license) VALUES (?, ?, ?, ?, ?)`,
         [factory, model, year, owner, license],
         function (err) {
             if (err) {
@@ -61,8 +61,8 @@ app.post('/api/v1/cars', (req, res) => {
 });
 
 //Teljes adatbázis lekérése
-app.get('/api/v1/cars', (req, res) => {
-    db.all(`SELECT * FROM cars`, [], (err, rows) => {
+app.get('/api/v1/sync', (req, res) => {
+    db.all(`SELECT * FROM sync`, [], (err, rows) => {
         if (err) return res.status(500).send(err.message);
             res.send(rows)
         
@@ -70,7 +70,7 @@ app.get('/api/v1/cars', (req, res) => {
 });
 
 //Adatbázis adatainak a frissítése
-app.put('/api/v1/cars/:id', (req, res) => {
+app.put('/api/v1/sync/:id', (req, res) => {
 const { id } = req.params;
 const { factory, model, year, owner, license } = req.body;
 //A végponti adatok validálása
@@ -79,7 +79,7 @@ if (error) {
     return res.status(400).json({ message: error.details[0].message });
 }
 
-db.run(`UPDATE cars SET factory = ?, model = ?, year = ?, owner = ?, license = ? WHERE id = ?`,
+db.run(`UPDATE sync SET factory = ?, model = ?, year = ?, owner = ?, license = ? WHERE id = ?`,
     [factory, model, year, owner, license, id],
     function (err) {
         if (err) {
@@ -92,15 +92,15 @@ db.run(`UPDATE cars SET factory = ?, model = ?, year = ?, owner = ?, license = ?
 });
 
 //DELETE végpont az adatok törlésére
-app.delete('/api/v1/cars/:id', (req, res) => {
+app.delete('/api/v1/sync/:id', (req, res) => {
     const { id } = req.params;
 
-    db.run(`DELETE FROM cars WHERE id = ?`, [id],
+    db.run(`DELETE FROM sync WHERE id = ?`, [id],
     function (err) {
         if (err) {
             res.status(500).json({ error: err.message });
         } else {
-            res.json({ message: 'A gépjármű adatainak a törlése megtörtént.'});
+            res.json({ message: 'Az alkalmazott adatainak a törlése megtörtént.'});
         }
     });
 });
